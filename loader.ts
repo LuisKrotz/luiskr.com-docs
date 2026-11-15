@@ -3,9 +3,9 @@
  * @description Boot-loader lifecycle for <view-docs> — mirrors the space
  * playground's `updateSpaceLoader`/`dismissSpaceLoader` pair with
  * docs-context stage copy. The overlay stays up until the portal reaches
- * its first usable state (manifest resolved, scene mount attempted, and
- * any in-flight file payload settled) so a broken WebGL path never leaves
- * the user stuck behind it.
+ * its first usable state (manifest resolved and any in-flight file
+ * payload settled) so a broken payload path never leaves the user stuck
+ * behind it.
  */
 
 import { DOCS_CLASSES } from '@core/tokens/classes/docs.js'

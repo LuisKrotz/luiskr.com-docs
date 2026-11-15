@@ -101,7 +101,7 @@ describe('ViewDocs — docs portal', () => {
     expect(customElements.get(VIEW_TAGS.VIEW_DOCS)).toBe(ViewDocs)
   })
 
-  test('root render: title, stamp, tree, crumb input, grid, scene + legal footer', () => {
+  test('root render: title, stamp, tree, crumb input, grid + legal footer', () => {
     const $ = (sel) => view.shadowRoot.querySelector(sel)
 
     expect($(`.${DOCS_CLASSES.DOCS_TITLE}`).textContent).toBe(DOCS_STRINGS.TITLE)
@@ -111,7 +111,6 @@ describe('ViewDocs — docs portal', () => {
     expect($(`.${DOCS_CLASSES.DOCS_TREE}`)).toBeTruthy()
     expect($(`.${DOCS_CLASSES.DOCS_CRUMB_EDIT}`)).toBeTruthy()
     expect($(`#${DOCS_IDS.GL}`)).toBeTruthy()
-    expect($(`#${DOCS_IDS.SCENE}`)).toBeTruthy()
     // The portal grid sections the flat root buckets under four groups.
     expect($(`.${DOCS_CLASSES.DOCS_GRID}`).children.length).toBe(4)
     // The shared legal footer mounts inside the portal column.
@@ -264,12 +263,6 @@ describe('ViewDocs — docs portal', () => {
 
   test('GL strip falls back when canvas has no webgl context', () => {
     expect(view.classList.contains(DOCS_CLASSES.DOCS_GL_FALLBACK)).toBe(true)
-  })
-
-  test('scene canvas hidden via fallback class when webgl2 is unavailable', () => {
-    const scene = view.shadowRoot.querySelector(`.${DOCS_CLASSES.DOCS_SCENE}`)
-
-    expect(scene.classList.contains(DOCS_CLASSES.DOCS_SCENE_OFF)).toBe(true)
   })
 
   test('pickNode on a dir expands it and navigates', async () => {

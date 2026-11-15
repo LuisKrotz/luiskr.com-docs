@@ -1,5 +1,5 @@
 // ════════════════════════════════════════════════════════════════════════════
-//  docs/_chrome.scss — the .docs portal chrome — container flex column + the GL thread backdrop and persistent 3D architecture scene layers.
+//  docs/_chrome.scss — the .docs portal chrome — container flex column + the GL thread backdrop layer.
 //  Imported by docs.scss (manifest) — not compiled standalone.
 // ════════════════════════════════════════════════════════════════════════════
 
@@ -21,8 +21,7 @@
   box-sizing: border-box;
 
   // ── GL thread backdrop — the fixed viewport layer behind the content
-  //    column. The 3D architecture scene is NOT a backdrop anymore: it
-  //    lives inside the map column's stage (see docs/_map.scss). ───────
+  //    column. ────────────────────────────────────────────────────────
   &-gl {
     position: fixed;
     inset: 0;
@@ -33,59 +32,25 @@
     pointer-events: none;
   }
 
-  // The persistent scene canvas fills whichever stage hosts it — the
-  // right-hand map column or the centered zoom dialog. Ink is the
-  // project's turquoise accent *contrast* variant: cyan on dark, deep
-  // teal on light — the raw accent is invisible on white.
-  &-scene {
-    display: block;
-    width: 100%;
-    height: 100%;
-    color: var(--color-accent-contrast);
-    cursor: grab;
-
-    &:active {
-      cursor: grabbing;
-    }
+  // CSS fallback: the shared turbulence membrane — the identical
+  // drifting-isoline field the nav menu overlay's fallback plays
+  // (base/_membrane.scss). The fallback class lands on the <view-docs>
+  // host, so the scope reaches in through :host(); the canvas itself is
+  // retired — its transparent surface would only veil the membrane.
+  :host(&-gl-fallback) &-gl {
+    display: none;
   }
 
-  // Scene caption — the small chip inside the map head naming the
-  // surface ("interactive file cloud") so first-time viewers know the
-  // column is the interactive folder navigator, not decoration.
-  &-scene-hint {
-    display: inline-flex;
-    align-items: center;
-    // Floor the chip at the round control's size — the map-head pair
-    // (chip + zoom trigger) always shares one height.
-    min-height: to-rem($space-2xl);
-    box-sizing: border-box;
-    padding: to-rem($space-3xs) to-rem($space-sm);
-    font-size: to-rem($space-md);
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-    background: color-mix(in srgb, var(--bg-primary) 88%, transparent);
-    -webkit-backdrop-filter: blur(to-rem($space-xs));
-    backdrop-filter: blur(to-rem($space-xs));
-    border: var(--space-hairline) solid
-      color-mix(in srgb, var(--color-accent-contrast) 35%, transparent);
-    border-radius: var(--radius-md);
-    opacity: 0.75;
-  }
+  :host(&-gl-fallback) & {
+    @include membrane(var(--text-primary), var(--color-accent-contrast));
 
-  // CSS fallback: soft drifting gradient band when WebGL is off.
-  &-gl-fallback &-gl {
-    background: linear-gradient(115deg, transparent 30%, currentColor 45%, transparent 60%);
-    background-size: 300% 300%;
-    opacity: 0.04;
-    animation: #{$_B_DOCS}-drift 18s linear infinite;
-  }
-
-  @keyframes #{$_B_DOCS}-drift {
-    from {
-      background-position: 0% 0%;
-    }
-    to {
-      background-position: 100% 100%;
+    // Viewport-anchored under everything — fixed placement escapes the
+    // flex column (generated boxes would otherwise be flex items), and
+    // the negative z keeps ink under the content + footer layers.
+    &::before,
+    &::after {
+      position: fixed;
+      z-index: -1;
     }
   }
 }

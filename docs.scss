@@ -2,7 +2,7 @@
 //  docs.scss — MANIFEST for view-docs scoped styles (adopted into the
 //  docs view's shadow root). Split by surface into docs/ partials
 //  (imported below):
-//    _chrome      .docs container + GL thread backdrop + 3D scene
+//    _chrome      .docs container + GL thread backdrop
 //    _loader      docs boot loader (rings, counter, stage message)
 //    _content     content column (%MAXAREA gutter contract)
 //    _treeview    collapsible folder/file nav
@@ -10,8 +10,7 @@
 //    _grid        folder/file grid + generated glyphs
 //    _viewer      translucent file viewer surface
 //    _rendered    markdown/JSON/report content styling
-//    _map         architecture-map column + glass zoom modal
-//    _protected   copy-guard + scene hidden state
+//    _protected   copy-guard
 //    _media       mobile backdrop-filter drop + print guard
 // ════════════════════════════════════════════════════════════════════════════
 
@@ -19,6 +18,7 @@
 @import '../../core/sass/base/mixins';
 @import '../../core/sass/base/fonts';
 @import '../../core/sass/base/placeholders';
+@import '../../core/sass/base/membrane';
 
 $_B_DOCS: 'docs';
 
@@ -30,6 +30,5 @@ $_B_DOCS: 'docs';
 @import 'docs/grid';
 @import 'docs/viewer';
 @import 'docs/rendered';
-@import 'docs/map';
 @import 'docs/protected';
 @import 'docs/media';

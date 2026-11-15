@@ -16,9 +16,6 @@ import { FORM_ATTRS } from '@core/tokens/attrs/form.js'
 import { MICRODATA_ATTRS, MICRODATA_VALUES } from '@core/tokens/attrs/microdata.js'
 import { COMPONENT_TAGS } from '@core/tokens/elements/components.js'
 import { DOCS_CLASSES } from '@core/tokens/classes/docs.js'
-import { EXPAND_MODAL_CLASSES } from '@core/tokens/classes/modal.js'
-import { PREF_CLASSES } from '@core/tokens/classes/preferences.js'
-import { STATE_CLASSES } from '@core/tokens/classes/state.js'
 import { DOCS_IDS } from '@core/tokens/ids/docs.js'
 import { ROUTE_PATHS } from '@core/tokens/routes/paths.js'
 import { CHAR_STRINGS } from '@core/tokens/strings/chars.js'
@@ -42,21 +39,6 @@ import type { DocsNode } from './manifest.js'
  */
 const docsHref = (subPath: string): string =>
   subPath ? `${ROUTE_PATHS.DOCS}${CHAR_STRINGS.SLASH}${subPath}` : ROUTE_PATHS.DOCS
-
-/**
- * Map-stage loading veil — status-labelled spinner + caption covering the
- * canvas seat while the scene's async graph build (worker layout →
- * geometry/label upload) runs. Both stage hosts (the column and the zoom
- * dialog) emit the identical subtree so the veil follows the persistent
- * canvas on a mid-build re-seat.
- */
-const mapLoadingVeil = (): HTMLElement =>
-  (
-    <div className={DOCS_CLASSES.DOCS_MAP_LOADING} role={ARIA_ATTRS.ROLE_STATUS}>
-      <span className={DOCS_CLASSES.DOCS_MAP_LOADING_SPIN} aria-hidden={ATTR_VALUES.TRUE} />
-      <span className={DOCS_CLASSES.DOCS_MAP_LOADING_LABEL}>{DOCS_STRINGS.MAP_LOADING}</span>
-    </div>
-  ) as unknown as HTMLElement
 
 /**
  * The URL a tree-row click actually lands on: an expanded dir the viewer
@@ -481,9 +463,9 @@ export const renderDocs = (view: ViewDocs) => {
       }}
     >
       {/* Docs boot loader — stays up until the portal's first usable
-          state (manifest resolved, scene mount attempted, any in-flight
-          file payload settled); mirrors the space playground's system
-          boot overlay with docs-context stage copy. */}
+          state (manifest resolved, any in-flight file payload settled);
+          mirrors the space playground's system boot overlay with
+          docs-context stage copy. */}
       {!view._docsReady && (
         <div className={DOCS_CLASSES.DOCS_LOADER} aria-hidden="true">
           <div className={DOCS_CLASSES.DOCS_LOADER_GLOW} />
@@ -586,7 +568,7 @@ export const renderDocs = (view: ViewDocs) => {
               >
                 <div className={DOCS_CLASSES.DOCS_VIEWER_HEAD}>
                   {/* Square glyph button — the project's hairline-corner
-                      control pattern (same shape as the map zoom). */}
+                      control pattern. */}
                   <button
                     type={FORM_ATTRS.TYPE_BUTTON}
                     className={DOCS_CLASSES.DOCS_VIEWER_BACK}
@@ -657,88 +639,6 @@ export const renderDocs = (view: ViewDocs) => {
             {docsIndex(view)}
           </section>
         </div>
-
-        {/* Interactive file cloud — the alternative nav surface:
-            a right-hand column on ≥1025px (hidden under it), orbit/pinch
-            on the persistent scene canvas, tap-to-pick navigates. The
-            zoom trigger re-seats the SAME canvas into the centered glass
-            dialog — no context loss, no remount. */}
-        <aside className={DOCS_CLASSES.DOCS_MAP} aria-labelledby={DOCS_IDS.MAP_LABEL}>
-          <div className={DOCS_CLASSES.DOCS_MAP_HEAD}>
-            <span className={DOCS_CLASSES.DOCS_SCENE_HINT} id={DOCS_IDS.MAP_LABEL}>
-              {DOCS_STRINGS.SCENE_HINT}
-            </span>
-            <button
-              type={FORM_ATTRS.TYPE_BUTTON}
-              className={DOCS_CLASSES.DOCS_MAP_ZOOM}
-              aria-label={DOCS_STRINGS.MAP_ZOOM}
-              aria-expanded={String(view._mapZoomed)}
-              // The modal id only exists while zoomed — pointing
-              // aria-controls at a not-yet-rendered element trips
-              // aria_id_unique/aria-controls-validity checks.
-              aria-controls={view._mapZoomed ? DOCS_IDS.MAP_MODAL : undefined}
-              onClick={() => view.toggleMapZoom()}
-            >
-              <span className={DOCS_CLASSES.DOCS_MAP_ZOOM_ICON} aria-hidden={ATTR_VALUES.TRUE}>
-                {CHAR_STRINGS.EXPAND_GLYPH}
-              </span>
-            </button>
-          </div>
-          {!view._mapZoomed && (
-            <div className={DOCS_CLASSES.DOCS_MAP_STAGE}>
-              {view._sceneLoading ? mapLoadingVeil() : null}
-            </div>
-          )}
-        </aside>
-
-        {/* Map zoom dialog — glass overlay centering the enlarged scene;
-            the stage hosts the same persistent canvas while open. Chrome
-            follows the expand-modal pattern: a fullscreen close-area
-            click-catcher, the close-bar's circular pref-close canvas
-            button (CloseButtonWebGL mounts on it in onUpdated; the CSS X
-            fallback span stays authoritative on no-GL contexts), and a
-            labelled close-bottom under the dialog content. */}
-        {view._mapZoomed && (
-          <div className={DOCS_CLASSES.DOCS_MAP_MODAL}>
-            <div className={DOCS_CLASSES.DOCS_MAP_CLOSE_AREA} onClick={() => view.closeMapZoom()} />
-            <div
-              className={DOCS_CLASSES.DOCS_MAP_DIALOG}
-              id={DOCS_IDS.MAP_MODAL}
-              role={ARIA_ATTRS.ROLE_DIALOG}
-              aria-modal={ATTR_VALUES.TRUE}
-              aria-label={DOCS_STRINGS.MAP_LABEL}
-            >
-              <div className={DOCS_CLASSES.DOCS_MAP_HEAD}>
-                <span className={DOCS_CLASSES.DOCS_SCENE_HINT}>{DOCS_STRINGS.SCENE_HINT}</span>
-                <button
-                  type={FORM_ATTRS.TYPE_BUTTON}
-                  className={PREF_CLASSES.PREF_CLOSE_BTN}
-                  aria-label={DOCS_STRINGS.MAP_CLOSE}
-                  onClick={() => view.closeMapZoom()}
-                >
-                  <canvas
-                    className={`${PREF_CLASSES.PREF_CLOSE_CANVAS} ${STATE_CLASSES.IS_FALLBACK}`}
-                    aria-hidden={ATTR_VALUES.TRUE}
-                  />
-                  <span
-                    className={EXPAND_MODAL_CLASSES.EXPAND_MODAL_CLOSE_BAR_FALLBACK}
-                    aria-hidden={ATTR_VALUES.TRUE}
-                  />
-                </button>
-              </div>
-              <div className={DOCS_CLASSES.DOCS_MAP_STAGE}>
-                {view._sceneLoading ? mapLoadingVeil() : null}
-              </div>
-              <button
-                type={FORM_ATTRS.TYPE_BUTTON}
-                className={DOCS_CLASSES.DOCS_MAP_CLOSE_BOTTOM}
-                onClick={() => view.closeMapZoom()}
-              >
-                {DOCS_STRINGS.MAP_CLOSE}
-              </button>
-            </div>
-          </div>
-        )}
       </div>
 
       {/* Shared legal footer — the last column child; the content

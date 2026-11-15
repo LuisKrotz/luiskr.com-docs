@@ -74,18 +74,4 @@ describe('docs manifest — no docs-root arms', () => {
     expect(groups.some((g) => g.path === 'group/source')).toBe(true)
     expect(groups.some((g) => g.path === 'group/reports')).toBe(true)
   })
-
-  test('_scenePath falls back to the raw root when no group owns it', async () => {
-    const { ViewDocs } = await import('@docs/Docs.js')
-    const view = new ViewDocs()
-
-    document.body.appendChild(view)
-    await new Promise((r) => setTimeout(r, 40))
-
-    // 'misc' is a root of an unclaimed kind — no group child matches it
-    // or prefixes it → the `?? path` miss arm.
-    expect(view._scenePath('misc')).toBe('misc')
-
-    view.remove()
-  })
 })

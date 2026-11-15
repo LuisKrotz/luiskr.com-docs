@@ -97,8 +97,8 @@ describe('docs loader — coverage tails', () => {
     view = new ViewDocs()
     cleanup = mount(view)
 
-    // Re-render after readiness: _syncLoader early-returns and the scene
-    // remount guard takes its false arm — no loader state changes.
+    // Re-render after readiness: _syncLoader early-returns — no loader
+    // state changes.
     view._updateDom()
 
     expect(view._docsReady).toBe(true)

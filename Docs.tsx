@@ -5,8 +5,8 @@
  * Renders the docs/reports/coverage/src manifest as a browsable portal:
  * recursive treeview, editable breadcrumbs, generated folder artwork,
  * on-demand file payloads (/docs-content/*.json) rendered as HTML — plus
- * the WebGL nav backdrop, the three.js architecture scene on the portal
- * root, and the copy-protection layer on source-code pages.
+ * the WebGL nav backdrop and the copy-protection layer on
+ * source-code pages.
  *
  * The manifest comes from `virtual:docs-manifest` (build-time scan); file
  * payloads arrive lazily so thousands of documents never load at once.
@@ -14,27 +14,21 @@
 
 import { ARIA_ATTRS } from '@core/tokens/attrs/aria.js'
 import { ATTR_VALUES } from '@core/tokens/attrs/values.js'
-import { PREF_CLASSES } from '@core/tokens/classes/preferences.js'
 import { READER_CLASSES } from '@core/tokens/classes/reader.js'
 import { DATA_ATTRS } from '@core/tokens/attrs/data.js'
 import { DOCS_CLASSES } from '@core/tokens/classes/docs.js'
 import { HTML_TAGS } from '@core/tokens/elements/html.js'
 import { VIEW_TAGS } from '@core/tokens/elements/views.js'
 import { DOCS_IDS } from '@core/tokens/ids/docs.js'
-import { KEYS, MEDIA_QUERIES } from '@core/tokens/primitives.js'
+import { KEYS } from '@core/tokens/primitives.js'
 import { ROUTE_PATHS } from '@core/tokens/routes/paths.js'
 import { DOCS_SELECTORS } from '@core/tokens/selectors/docs.js'
 import { CHAR_STRINGS } from '@core/tokens/strings/chars.js'
-import { TYPE_STRINGS } from '@core/tokens/strings/types.js'
 import { DOCS_LOADER_PCT, DOCS_STRINGS } from '@core/tokens/strings/docs.js'
 import { BaseComponent } from '@core/Component.js'
 import store from '@core/store.js'
 import { componentText } from '@core/locale/ui-text.js'
 import { devWarn } from '@core/devlog.js'
-import { applyAnimationDesc } from '@core/utils/a11y/animation-desc.js'
-import { ANIMATION_DURATIONS } from '@core/tokens/motion/animation.js'
-import { ANIMATION_IDS } from '@core/tokens/data/animation-ids.js'
-import { CloseButtonWebGL } from '@core/utils/canvas/widgets/close-button.js'
 import { generateDocsSchema, setRobotsMeta, updateJsonLd } from '@core/utils/schema.js'
 import { isPlainClick } from '@core/utils/dom.js'
 import { BASE_TITLE } from '@core/tokens/routes.js'
@@ -51,16 +45,9 @@ import {
   type DocsNode,
   type DocsFilePayload,
 } from './manifest.js'
-import {
-  CLIPBOARD_EVENTS,
-  FORM_EVENTS,
-  GL_EVENTS,
-  MOUSE_EVENTS,
-  PRINT_EVENTS,
-} from '@core/tokens/events/dom.js'
+import { CLIPBOARD_EVENTS, MOUSE_EVENTS, PRINT_EVENTS } from '@core/tokens/events/dom.js'
 import { renderDocs } from './render.js'
 import { mountDocsGlStrip, type DocsGlHandle } from './gl-strip.js'
-import { mountArchScene, type ArchSceneHandle } from './arch-scene.js'
 import { attachCopyGuard, type GuardDisposer } from './copy-guard.js'
 import { attachCoverageNav } from './coverage-nav.js'
 import { renderMermaidBlocks, renderMermaidBlocksForPrint } from './mermaid.js'
@@ -90,25 +77,6 @@ export class ViewDocs extends BaseComponent {
   /** Mobile nav-panel open state (the tree collapses under a toggle <1024). */
   navOpen = false
 
-  /** Architecture-map zoom modal — the persistent scene canvas re-seats
-   *  into the centered glass dialog while open. */
-  _mapZoomed = false
-
-  /**
-   * The dialog's animated close button — a CloseButtonWebGL mounted on
-   * the pref-close canvas each render that produces a fresh dialog. The
-   * widget binds click on the parent button; the DOM onClick does the
-   * same, so closeMapZoom must stay idempotent (double-fire safe).
-   */
-  private _mapCloseBtn: CloseButtonWebGL | null = null
-
-  /**
-   * Focus hand-off consumed by onUpdated: opening the zoom dialog puts
-   * focus on its close button (the expand-modal pattern), closing it
-   * returns focus to the map column's zoom trigger.
-   */
-  private _mapFocus: 'open' | 'close' | null = null
-
   /**
    * Path whose tree/grid button regains focus after the next re-render —
    * arrow-key expand/collapse re-creates the DOM, so focus would
@@ -130,23 +98,6 @@ export class ViewDocs extends BaseComponent {
 
   private _glCanvas: HTMLCanvasElement | null = null
 
-  private _sceneHandle: ArchSceneHandle | null = null
-
-  private _sceneCanvas: HTMLCanvasElement | null = null
-
-  /**
-   * Map-column visibility watcher — ≤1024 the aside is display:none and
-   * the scene's rAF loop is paused so hidden canvases cost zero GPU.
-   * The zoom dialog overrides the pause (the modal can open at any
-   * width once the column control exists… but the column only renders
-   * >1024, so the dialog is reachable only there — the listener still
-   * keeps the paused flag honest across resizes).
-   */
-  private _mapMq: MediaQueryList | null = null
-
-  /** Bound change handler for _mapMq — removed in onDestroy. */
-  private _onMapMq = (): void => this._syncScenePaused()
-
   /** Document-level istanbul key-nav disposer while a report is open. */
   private _covNavDispose: (() => void) | null = null
 
@@ -159,8 +110,7 @@ export class ViewDocs extends BaseComponent {
 
   /**
    * Boot-loader lifecycle — the overlay stays up until the portal's first
-   * usable state: manifest resolved, the architecture scene mount
-   * attempted (success or WebGL fallback), and any in-flight file payload
+   * usable state: manifest resolved and any in-flight file payload
    * settled. Mirrors the space playground's `_earthReady` contract.
    */
   _docsReady = false
@@ -168,15 +118,6 @@ export class ViewDocs extends BaseComponent {
   /** Current boot stage copy + percent rendered inside the loader. */
   _loaderMsg: string = DOCS_STRINGS.LOADER_MSG_INIT
   _loaderPct = 0
-
-  /**
-   * Scene-graph build state — true while the worker-computed layout →
-   * mesh/label upload is in flight (initial mount AND context-restore
-   * remounts). The map stage's loading veil renders on this flag and is
-   * dismissed imperatively on the scene's ready/lost signal so a slow
-   * build never reads as a blank black box.
-   */
-  _sceneLoading = true
 
   constructor() {
     super(docsStyles)
@@ -333,41 +274,6 @@ export class ViewDocs extends BaseComponent {
     this._updateDom()
   }
 
-  /**
-   * Map zoom open — the dialog's first-focusable is its close button
-   * (expand-modal pattern: AT/keyboard reach the dismiss affordance
-   * first). The scene canvas re-seats into the dialog stage on the next
-   * render pass — no context loss, no remount.
-   */
-  openMapZoom(): void {
-    if (this._mapZoomed) return
-
-    this._mapZoomed = true
-    this._mapFocus = 'open'
-
-    this._updateDom()
-  }
-
-  /**
-   * Map zoom close — idempotent: the close button fires this from both
-   * its DOM click and the widget's own listener on the same gesture.
-   * Returns focus to the zoom trigger.
-   */
-  closeMapZoom(): void {
-    if (!this._mapZoomed) return
-
-    this._mapZoomed = false
-    this._mapFocus = 'close'
-
-    this._updateDom()
-  }
-
-  /** Zoom trigger — toggles the dialog (delegates to the explicit arms). */
-  toggleMapZoom(): void {
-    if (this._mapZoomed) this.closeMapZoom()
-    else this.openMapZoom()
-  }
-
   /** Expands or collapses a dir in place (keyboard left/right) without navigating. */
   toggleDir(path: string): void {
     if (this._openDirs.has(path)) this._openDirs.delete(path)
@@ -493,9 +399,7 @@ export class ViewDocs extends BaseComponent {
   onViewKey(e: KeyboardEvent): void {
     if (e.key !== KEYS.ESCAPE) return
 
-    if (this._mapZoomed) {
-      this.closeMapZoom()
-    } else if (this.filePayload) {
+    if (this.filePayload) {
       this.closeFile()
     } else if (this.navOpen) {
       this.navOpen = false
@@ -659,7 +563,7 @@ export class ViewDocs extends BaseComponent {
     this._unprepareMirror()
   }
 
-  /** Lifecycle: (re)mounts the GL strip, scene and viewer content. */
+  /** Lifecycle: (re)mounts the GL strip and viewer content. */
   override onUpdated(): void {
     const glCanvas = this.$(`#${DOCS_IDS.GL}`) as HTMLCanvasElement | null
 
@@ -673,46 +577,6 @@ export class ViewDocs extends BaseComponent {
         this.classList.add(DOCS_CLASSES.DOCS_GL_FALLBACK)
       }
     }
-
-    // The scene canvas is PERSISTENT — created once, re-seated into
-    // whichever stage this render produced (the right-hand map column,
-    // or the zoom dialog while _mapZoomed). Re-parenting keeps the WebGL
-    // context and graph alive across every _updateDom — previously each
-    // render rebuilt the canvas and remounted the whole scene, so a
-    // tree-toggle paid a full GPU graph rebuild.
-    const sceneCanvas = this._sceneEl()
-
-    const stage = this.$(DOCS_SELECTORS.SCENE_STAGE)
-
-    if (stage && sceneCanvas.parentNode !== stage) stage.appendChild(sceneCanvas)
-
-    // Mount exactly once (or again after a context loss cleared the
-    // handle) — the scene-off class marks a dead mount so failed hosts
-    // don't retry the GPU on every render.
-    if (!this._sceneHandle && !sceneCanvas.classList.contains(DOCS_CLASSES.DOCS_SCENE_OFF)) {
-      this._mountScene(sceneCanvas)
-
-      // The mount attempt just finished either way (live scene or
-      // scene-off fallback) — advance the loader to the scene stage.
-      if (!this._docsReady) {
-        this._updateLoader(DOCS_STRINGS.LOADER_MSG_SCENE, DOCS_LOADER_PCT.SCENE)
-      }
-    }
-
-    // Keep the map's active-location marker in sync — both on fresh
-    // mounts and on same-canvas navigations (the scene persists). The
-    // resolved node path carries the root-bucket prefix the scene's
-    // target table keys on; bare URLs ('architecture/x.md') resolve to
-    // 'docs/architecture/x.md' before the lookup, and unresolvable
-    // paths fall back to the portal root. Bucket roots whose children
-    // were promoted into a section (the docs bucket → Documentation)
-    // aren't scene nodes themselves — their highlight lands on the
-    // owning section group.
-    this._sceneHandle?.setActive(this._scenePath(this.node?.path || CHAR_STRINGS.EMPTY))
-
-    this._syncMapCloseBtn()
-
-    this._syncScenePaused()
 
     // Arrow-key expand/collapse re-creates the DOM — put focus back on
     // the row that was being driven so ↑/↓ continue from there.
@@ -740,56 +604,9 @@ export class ViewDocs extends BaseComponent {
       treeItems[0].setAttribute(ARIA_ATTRS.TABINDEX, ATTR_VALUES.TABINDEX_ZERO)
     }
 
-    // Map-zoom focus hand-off — the expand-modal contract: the dialog's
-    // close button takes focus on open; the column's zoom trigger takes
-    // it back on close.
-    if (this._mapFocus) {
-      const mapFocus = this._mapFocus
-
-      this._mapFocus = null
-
-      const focusEl =
-        mapFocus === 'open'
-          ? (this.$(`.${PREF_CLASSES.PREF_CLOSE_BTN}`) as HTMLElement | null)
-          : (this.$(`.${DOCS_CLASSES.DOCS_MAP_ZOOM}`) as HTMLElement | null)
-
-      focusEl?.focus()
-    }
-
     this._renderFilePayload()
 
     this._syncLoader()
-  }
-
-  /**
-   * Mounts/refreshes the zoom dialog's animated close button on its live
-   * canvas — same mount contract as the preferences/expand-modal close
-   * (the canvas is re-created with each render that produces the dialog,
-   * so a stale handle is destroyed and remounted). No dialog → the
-   * widget is destroyed outright so it holds no GL context slot.
-   */
-  private _syncMapCloseBtn(): void {
-    const canvas = this.$(`.${PREF_CLASSES.PREF_CLOSE_CANVAS}`) as HTMLCanvasElement | null
-
-    if (!canvas) {
-      this._mapCloseBtn?.destroy()
-
-      this._mapCloseBtn = null
-
-      return
-    }
-
-    if (this._mapCloseBtn && this._mapCloseBtn.canvas !== canvas) {
-      this._mapCloseBtn.destroy()
-
-      this._mapCloseBtn = null
-    }
-
-    if (!this._mapCloseBtn) {
-      applyAnimationDesc(canvas, ANIMATION_IDS.CLOSE_BUTTON)
-
-      this._mapCloseBtn = new CloseButtonWebGL(canvas, () => this.closeMapZoom())
-    }
   }
 
   /** Mirrors a boot stage into the loader overlay (delegates to loader.ts). */
@@ -825,162 +642,6 @@ export class ViewDocs extends BaseComponent {
     this._dismissLoader()
   }
 
-  /**
-   * The persistent scene canvas — created once with its id/class/label
-   * and the `webglcontextrestored` recovery listener, then re-seated by
-   * onUpdated into whichever stage this render produced. Re-parenting a
-   * canvas preserves its WebGL context, so the scene survives renders,
-   * column↔dialog moves and tree toggles without a remount.
-   * @returns The shared scene canvas element.
-   */
-  private _sceneEl(): HTMLCanvasElement {
-    if (!this._sceneCanvas) {
-      const canvas = document.createElement(HTML_TAGS.CANVAS)
-
-      canvas.id = DOCS_IDS.SCENE
-      canvas.className = DOCS_CLASSES.DOCS_SCENE
-      canvas.setAttribute(ARIA_ATTRS.ARIA_LABEL, DOCS_STRINGS.TREE_LABEL)
-      // The architecture scene is decorative background — the print
-      // adapter retires it (no still) so docs print light, not the
-      // dark backdrop. Diagram/content canvases are unaffected.
-      canvas.setAttribute(DATA_ATTRS.PRINT_SKIP, ATTR_VALUES.EMPTY)
-
-      // `webglcontextrestored` is the recovery signal — the browser hands
-      // the canvas a fresh context, so a full remount rebuilds the graph.
-      canvas.addEventListener(GL_EVENTS.WEBGL_CONTEXT_RESTORED, this._onSceneRestored)
-
-      this._sceneCanvas = canvas
-    }
-
-    return this._sceneCanvas
-  }
-
-  /**
-   * Maps a manifest path to the path the scene knows — section groups
-   * are scene nodes ('group/…'), manifest members are scene nodes, but
-   * a bucket root whose children were promoted into a section (the
-   * docs bucket → Documentation) exists only in the URL space, so its
-   * highlight maps to the owning group node.
-   * @param path Manifest-relative docs path.
-   * @returns The scene node's path for the highlight/focus lookup.
-   */
-  private _scenePath(path: string): string {
-    if (!path) return path
-
-    const groups = docsGroups()
-    const inScene = groups.some(
-      (g) =>
-        g.path === path ||
-        g.children?.some((c) => c.path === path) ||
-        !(getDocsManifest().roots as Array<{ root: string }>).some((r) => r.root === path)
-    )
-
-    if (inScene) return path
-
-    const owner = groups.find((g) =>
-      g.children?.some((c) => c.path.startsWith(`${path}${CHAR_STRINGS.SLASH}`))
-    )
-
-    return owner?.path ?? path
-  }
-
-  /**
-   * Mounts/remounts the 3D scene on the given canvas. `onLost` marks the
-   * canvas with the scene-off class and clears the handle so a later
-   * `webglcontextrestored` can rebuild it — the portal stays usable the
-   * whole time.
-   */
-  /**
-   * Scene ready/lost teardown for the map-stage veil — flag off so
-   * subsequent renders skip it, then the live node fades + removes
-   * (same opacity→remove contract as the boot loader's dismissal).
-   */
-  private _dismissSceneLoading(): void {
-    this._sceneLoading = false
-
-    const veil = this.$<HTMLElement>(DOCS_SELECTORS.MAP_LOADING)
-
-    if (!veil) return
-
-    veil.style.opacity = CHAR_STRINGS.ZERO
-
-    setTimeout(() => veil.remove(), ANIMATION_DURATIONS.LOADER_FADE_MS)
-  }
-
-  private _mountScene(canvas: HTMLCanvasElement): void {
-    this._sceneHandle?.destroy()
-
-    this._sceneCanvas = canvas
-
-    // A mid-life remount (context restore) lands between renders —
-    // re-arm the flag and re-render so the stage reproduces the veil.
-    if (!this._sceneLoading) {
-      this._sceneLoading = true
-
-      this._updateDom()
-    }
-
-    this._sceneHandle = mountArchScene(
-      canvas,
-      // The scene's top ring IS the portal's four sections — the map
-      // reads Source Code / Documentation / Architecture / Reports as
-      // separated clusters instead of a flat 19-bucket fan.
-      docsGroups().map((g) => ({ root: g.path, label: g.name, children: g.children })),
-      (path) => {
-        // Section-group paths aren't routable — picking one does
-        // nothing beyond the highlight pass (mirrors pickNode).
-        if (path.startsWith(DOCS_STRINGS.GROUP_PATH_PREFIX)) return
-
-        this.navigateDocs(path)
-      },
-      () => {
-        canvas.classList.add(DOCS_CLASSES.DOCS_SCENE_OFF)
-
-        this._sceneHandle = null
-
-        this._dismissSceneLoading()
-      },
-      () => this._dismissSceneLoading()
-    )
-
-    // No WebGL2 (or a dead context) → hide the canvas rather than a
-    // blank box; the grid/tree/crumb navigation carries the portal.
-    canvas.classList.toggle(DOCS_CLASSES.DOCS_SCENE_OFF, !this._sceneHandle)
-
-    // Synchronous mount failure never reaches onLost — drop the veil.
-    if (!this._sceneHandle) this._dismissSceneLoading()
-
-    // Start watching the map-column breakpoint on the first mount —
-    // one listener for the element's lifetime.
-    if (!this._mapMq && typeof matchMedia === TYPE_STRINGS.FUNCTION) {
-      this._mapMq = matchMedia(MEDIA_QUERIES.MIN_WIDTH_1025)
-      this._mapMq.addEventListener(FORM_EVENTS.CHANGE, this._onMapMq)
-    }
-  }
-
-  /**
-   * Pause-state sync — the scene loop halts while the map column is
-   * display:none (≤1024) AND the zoom dialog is closed; at wider widths,
-   * or while the glass dialog is open, the loop runs. Called from
-   * onUpdated, the mq change listener, and toggleMapZoom.
-   */
-  private _syncScenePaused(): void {
-    const columnVisible = this._mapMq ? this._mapMq.matches : true
-
-    this._sceneHandle?.setPaused(!columnVisible && !this._mapZoomed)
-  }
-
-  /** `webglcontextrestored` handler — rebuilds the scene on the fresh context. */
-  private _onSceneRestored = (e: Event): void => {
-    // currentTarget is the canvas that owns the listener — the listener is
-    // detached in onDestroy, so it can only ever fire on a live canvas.
-    const canvas = e.currentTarget as HTMLCanvasElement
-
-    canvas.classList.remove(DOCS_CLASSES.DOCS_SCENE_OFF)
-
-    this._mountScene(canvas)
-  }
-
   /** Lifecycle: disposes guard + GL surfaces. */
   override onDestroy(): void {
     this._guardDispose?.()
@@ -991,12 +652,6 @@ export class ViewDocs extends BaseComponent {
 
     this._covNavDispose = null
 
-    this._sceneCanvas?.removeEventListener(GL_EVENTS.WEBGL_CONTEXT_RESTORED, this._onSceneRestored)
-
-    this._mapMq?.removeEventListener(FORM_EVENTS.CHANGE, this._onMapMq)
-
-    this._mapMq = null
-
     window.removeEventListener(PRINT_EVENTS.PREPARE, this._onPrintPrepare)
     window.removeEventListener(CLIPBOARD_EVENTS.AFTER_PRINT, this._onAfterPrint)
 
@@ -1006,15 +661,6 @@ export class ViewDocs extends BaseComponent {
 
     this._glHandle = null
     this._glCanvas = null
-
-    this._sceneHandle?.destroy()
-
-    this._sceneHandle = null
-    this._sceneCanvas = null
-
-    this._mapCloseBtn?.destroy()
-
-    this._mapCloseBtn = null
 
     // The docs JSON-LD graph is page-scoped, but the nav pipeline emits
     // the next route's graph BEFORE this element disconnects — clearing

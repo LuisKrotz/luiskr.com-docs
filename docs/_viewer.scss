@@ -1,10 +1,10 @@
 // ════════════════════════════════════════════════════════════════════════════
-//  docs/_viewer.scss — the file viewer — translucent reading surface over the 3D scene.
+//  docs/_viewer.scss — the file viewer — translucent reading surface over the GL backdrop.
 //  Imported by docs.scss (manifest) — not compiled standalone.
 // ════════════════════════════════════════════════════════════════════════════
 
 .#{$_B_DOCS} {
-  // ── File viewer — translucent reading surface over the scene ─────────
+  // ── File viewer — translucent reading surface over the GL backdrop ───
   &-viewer {
     pointer-events: auto;
     margin-bottom: to-rem($space-lg);
@@ -22,8 +22,7 @@
     margin-bottom: to-rem($space-sm);
   }
 
-  // Back trigger — the project's hairline-corner square glyph button,
-  // same shape as the map zoom control.
+  // Back trigger — the project's hairline-corner square glyph button.
   &-viewer-back {
     @extend %RESETBTN;
 

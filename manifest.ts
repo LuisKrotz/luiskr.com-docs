@@ -25,9 +25,6 @@ export interface DocsNode {
   children?: DocsNode[]
   id?: string
   mtime?: string
-  /** Scene-only flag — `+N` aggregate leaves the leaf cap synthesizes
-   *  for surplus file children; the map colors them with the dir ink. */
-  aggregate?: boolean
   /** View-synthesized section node — a disclosure wrapper the portal
    *  tree/grid renders above the real roots (Source Code, Documentation,
    *  Architecture Docs, Reports). Toggles only: no manifest path or
@@ -37,7 +34,7 @@ export interface DocsNode {
 
 /** A view-synthesized section node — `buildGroups` always supplies the
  *  children array and flags the node `group: true`, so the section type
- *  narrows both fields required for scene/tree consumers. */
+ *  narrows both fields required for tree consumers. */
 export interface DocsGroup extends DocsNode {
   children: DocsNode[]
   group: true

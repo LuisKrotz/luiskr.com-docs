@@ -1,12 +1,12 @@
 // ════════════════════════════════════════════════════════════════════════════
-//  docs/_content.scss — the content column — %MAXAREA gutter contract; containers stay pointer-transparent so the fixed scene stays draggable.
+//  docs/_content.scss — the content column — %MAXAREA gutter contract; containers stay pointer-transparent so the fixed GL backdrop stays visible.
 //  Imported by docs.scss (manifest) — not compiled standalone.
 // ════════════════════════════════════════════════════════════════════════════
 
 .#{$_B_DOCS} {
   // ── Content column — the project's max-area gutter contract ──────────
-  // The containers themselves are pointer-transparent so the fixed scene
-  // behind stays draggable wherever no interactive surface covers it;
+  // The containers themselves are pointer-transparent so the fixed GL
+  // backdrop shows through wherever no interactive surface covers it;
   // interactive children re-enable hit-testing explicitly.
   &-header,
   &-crumbs,
@@ -66,25 +66,17 @@
     // pad only; horizontal stays on %MAXAREA's gutter (the header note).
     padding-bottom: to-rem(120);
 
-    // 1025–1280 — the stack cell (combobox nav above content) shares the
-    // row with the right-hand file cloud. The map spans one row so
-    // its sticky height can never inflate the nav row.
-    @media (min-width: #{$vw-1024 + 1px}) and (max-width: #{$vw-1280}) {
-      grid-template-columns: minmax(0, 1fr) to-rem($space-7xl);
-      align-items: start;
-    }
-
-    // ≥1281 — the full three-column portal: tree | content | map. The
-    // stack wrapper dissolves (display:contents) so nav, main and map
-    // auto-place into the three tracks in DOM order.
+    // ≥1281 — the two-column portal: tree | content. The stack wrapper
+    // dissolves (display:contents) so nav and main auto-place into the
+    // two tracks in DOM order.
     @media (min-width: #{$vw-1280 + 1px}) {
-      grid-template-columns: to-rem($space-7xl) minmax(0, 1fr) to-rem($space-7xl);
+      grid-template-columns: to-rem($space-7xl) minmax(0, 1fr);
       align-items: start;
     }
   }
 
   // The nav+content stack — a real cell ≤1280, transparent ≥1281 so its
-  // children join the body's three-column grid.
+  // children join the body's two-column grid.
   &-stack {
     display: flex;
     flex-direction: column;

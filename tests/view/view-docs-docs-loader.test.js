@@ -2,10 +2,10 @@
  * @file view-docs-docs-loader.test.js
  * @description Docs boot loader — the overlay mirrors the space
  * playground's system boot sequence with docs-context stage copy:
- * manifest → scene → file → ready. Covers the staged DOM writes
+ * manifest → file → ready. Covers the staged DOM writes
  * (message/percent/bar), the hold during an in-flight file fetch,
- * fade+remove dismissal, and that WebGL fallback never strands the page
- * behind the overlay.
+ * fade+remove dismissal, and that a failed payload never strands the
+ * page behind the overlay.
  */
 import { describe, test, expect, beforeEach, afterEach, jest } from '@jest/globals'
 import { ViewDocs } from '@docs/Docs.js'
